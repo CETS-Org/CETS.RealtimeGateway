@@ -1,4 +1,3 @@
-
 ## Notification Service Setup & Implementation Guide
 
 This document explains how to **set up notifications (Docker & services)** and **implement new backend notification events**.
@@ -77,12 +76,11 @@ Configure in `appsettings.json` or environment:
      "Redis": "localhost:6379"
   },
    "Mongo": {
+    "Database": "CETS",
     "Notification": {
-      "Database": "CETSNotifications",
       "Collection": "notifications"
     },
     "Chat": {
-      "Database": "CETSChat",
       "Collection": "messages"
     }
   },
