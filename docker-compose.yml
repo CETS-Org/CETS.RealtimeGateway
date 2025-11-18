@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  # Redis: OPTIONAL (for Socket.IO, caching, notifications)
+  redis:
+    image: redis:7-alpine
+    container_name: cets_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  # MongoDB: Matches your appsettings.json
+  mongodb:
+    image: mongo:7.0
+    container_name: cets_mongodb
+    restart: always
+    ports:
+      - "27017:27017"    # IMPORTANT → allows localhost access
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: guest
+      MONGO_INITDB_ROOT_PASSWORD: guest
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+networks:
+  default:
+    name: cets_network
+
+volumes:
+  redis_data:
+  mongodb_data:
