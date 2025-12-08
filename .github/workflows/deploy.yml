@@ -43,4 +43,4 @@ jobs:
       uses: azure/webapps-deploy@v2
       with:
         app-name: cets-realtime-gateway
-        images: ${{ secrets.ACR_LOGIN_SERVER }}/cets-realtime:latest
+        images: ${{ secrets.ACR_LOGIN_SERVER }}/cets-realtime-gateway:latest
