@@ -1,0 +1,46 @@
+name: Deploy Realtime Gateway
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch: {}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. Checkout Repo
+    - name: Checkout Source
+      uses: actions/checkout@v3
+
+    # 2. Azure Login
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    # 3. Docker Login
+    - name: Docker Login to ACR
+      uses: azure/docker-login@v1
+      with:
+        login-server: ${{ secrets.ACR_LOGIN_SERVER }}
+        username: ${{ secrets.ACR_USERNAME }}
+        password: ${{ secrets.ACR_PASSWORD }}
+
+    # 4. Build Docker Image
+    - name: Build Realtime Image
+      run: |
+        docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/cets-realtime:latest .
+
+    # 5. Push Docker Image
+    - name: Push Realtime Image
+      run: |
+        docker push ${{ secrets.ACR_LOGIN_SERVER }}/cets-realtime:latest
+
+    # 6. Deploy to Azure Web App
+    - name: Deploy to Azure
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: cets-realtime  # Make sure this matches your Azure App Service name
+        images: ${{ secrets.ACR_LOGIN_SERVER }}/cets-realtime:latest
