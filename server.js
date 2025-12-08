@@ -16,13 +16,14 @@ const port = process.env.PORT || 5001;
 const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
 
 // --- 1. SETUP REDIS CLIENTS FOR ADAPTER (Scaling Logic) ---
-// We need two separate connections for the Adapter: Pub and Sub
-const pubClient = new Redis(redisUrl);
-const subClient = pubClient.duplicate();
+// Use lazyConnect to control connection lifecycle and avoid double-connect errors
+const redisOptions = { lazyConnect: true };
+const pubClient = new Redis(redisUrl, redisOptions);
+const subClient = new Redis(redisUrl, redisOptions);
 
 // --- 2. SETUP MANUAL REDIS CLIENT (Backend Listener) ---
-// We keep your original client to listen to the C# API specifically
-const backendListener = new Redis(redisUrl);
+// Dedicated client for backend notifications
+const backendListener = new Redis(redisUrl, redisOptions);
 
 // Config CORS
 const allowedOriginsEnv = process.env.ALLOWED_ORIGINS || "*";
@@ -38,11 +39,25 @@ const io = new Server(server, {
 });
 
 // --- 3. APPLY THE ADAPTER ---
-// This allows Container A to talk to Container B automatically
-Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
-  io.adapter(createAdapter(pubClient, subClient));
-  console.log('✅ Redis Adapter connected (Scaling enabled)');
-});
+// Connect clients explicitly (lazyConnect) and handle errors
+Promise.all([pubClient.connect(), subClient.connect(), backendListener.connect()])
+  .then(() => {
+    io.adapter(createAdapter(pubClient, subClient));
+    console.log('✅ Redis Adapter connected (Scaling enabled)');
+
+    // Subscribe after connections are ready
+    backendListener.subscribe(CHANNEL_NOTIFICATION, CHANNEL_CHAT, (err, count) => {
+      if (err) {
+        console.error('❌ Failed to subscribe to Redis channel', err);
+      } else {
+        console.log(`✅ Subscribed to ${count} Redis channels: ${CHANNEL_NOTIFICATION}, ${CHANNEL_CHAT}`);
+      }
+    });
+  })
+  .catch((err) => {
+    console.error('❌ Redis connection failed', err);
+    process.exit(1);
+  });
 
 // Định nghĩa tên các kênh Redis
 const CHANNEL_NOTIFICATION = 'notifications';
@@ -60,16 +75,6 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     // console.log('User disconnected');
   });
-});
-
-// --- 4. SUBSCRIBE CẢ 2 KÊNH (KEEPING YOUR LOGIC) ---
-// This listens for messages coming from your C# / .NET Backend
-backendListener.subscribe(CHANNEL_NOTIFICATION, CHANNEL_CHAT, (err, count) => {
-  if (err) {
-    console.error('❌ Failed to subscribe to Redis channel', err);
-  } else {
-    console.log(`✅ Subscribed to ${count} Redis channels: ${CHANNEL_NOTIFICATION}, ${CHANNEL_CHAT}`);
-  }
 });
 
 // --- 5. XỬ LÝ TIN NHẮN TỪ BACKEND ---
