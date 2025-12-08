@@ -31,16 +31,16 @@ jobs:
     # 4. Build Docker Image
     - name: Build Realtime Image
       run: |
-        docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/cets-realtime:latest .
+        docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/cets-realtime-gateway:latest .
 
     # 5. Push Docker Image
     - name: Push Realtime Image
       run: |
-        docker push ${{ secrets.ACR_LOGIN_SERVER }}/cets-realtime:latest
+        docker push ${{ secrets.ACR_LOGIN_SERVER }}/cets-realtime-gateway:latest
 
     # 6. Deploy to Azure Web App
     - name: Deploy to Azure
       uses: azure/webapps-deploy@v2
       with:
-        app-name: cets-realtime  # Make sure this matches your Azure App Service name
+        app-name: cets-realtime-gateway
         images: ${{ secrets.ACR_LOGIN_SERVER }}/cets-realtime:latest
